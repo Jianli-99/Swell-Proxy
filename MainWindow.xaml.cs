@@ -369,12 +369,18 @@ namespace AnywhereWinUI
                 
                 batch.Completed += (s, ev) =>
                 {
-                    // Cleanup both clips when animation completes
-                    visual.Clip = null;
-                    ContentWrapper.Background = null; // Restore transparency for actual Mica
-                    ThemeTransitionOverlay.Visibility = Visibility.Collapsed;
-                    ThemeTransitionImage.Source = null;
-                    _isThemeTransitioning = false;
+                    // Cleanup must run on the UI thread; CompositionScopedBatch.Completed
+                    // can fire on a background thread, so marshal back before touching XAML elements.
+                    // Failing to do so leaves ContentWrapper.Background stuck as an opaque solid color,
+                    // which blocks the Acrylic/Mica transparency effect permanently.
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        visual.Clip = null;
+                        ContentWrapper.Background = null; // Restore transparency for Acrylic / Mica
+                        ThemeTransitionOverlay.Visibility = Visibility.Collapsed;
+                        ThemeTransitionImage.Source = null;
+                        _isThemeTransitioning = false;
+                    });
                 };
                 batch.End();
             }
@@ -590,8 +596,19 @@ namespace AnywhereWinUI
             this.Title = "Swell Proxy";
             this.AppWindow.Title = "Swell Proxy";
 
-            // Configure WinUIEx tray settings
-            _windowManager.IsVisibleInTray = true;
+            // Configure WinUIEx tray settings.
+            // WinUIEx 2.9.0 internally calls AppWindow.IsShownInSwitchers which throws
+            // NotImplementedException on some Windows App SDK 2.0.x builds / OS versions.
+            // Wrap it so a missing API doesn't crash the whole startup.
+            try
+            {
+                _windowManager.IsVisibleInTray = true;
+            }
+            catch (NotImplementedException)
+            {
+                // IsShownInSwitchers not supported on this build — tray icon unavailable,
+                // but the rest of the app can still run normally.
+            }
             _windowManager.TrayIconSelected += (_, _) => RestoreFromTray();
             _windowManager.TrayIconContextMenu += (_, e) =>
             {
