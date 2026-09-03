@@ -187,10 +187,28 @@ namespace AnywhereWinUI.ViewModels
                 _ => query
             };
 
+            // Snapshot the currently-selected item's ID before we clear the collection.
+            // FilteredServers.Clear() causes the ListView to fire SelectionChanged(null),
+            // which would reset the detail panel to "empty". By restoring SelectedServer
+            // after rebuilding we keep the UI in the correct state — this is especially
+            // important when a latency test completes and calls ApplyFilters() to re-sort
+            // while the user already has a node selected.
+            var previousSelectedId = SelectedServer?.Id;
+
             FilteredServers.Clear();
             foreach (var item in query)
             {
                 FilteredServers.Add(item);
+            }
+
+            // Restore the selection so the view doesn't snap back to "empty".
+            if (previousSelectedId != null)
+            {
+                var restored = FilteredServers.FirstOrDefault(s => s.Id == previousSelectedId);
+                if (restored != null && SelectedServer != restored)
+                {
+                    SelectedServer = restored;
+                }
             }
         }
 

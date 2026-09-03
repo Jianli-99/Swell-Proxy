@@ -1482,6 +1482,22 @@ namespace AnywhereWinUI.Views
                 }
                 else
                 {
+                    // SelectedItem is null — this can happen when ApplyFilters() rebuilds
+                    // FilteredServers (e.g. after a latency test completes in Latency sort mode)
+                    // and WinUI temporarily clears the selection before restoring it.
+                    // If _lastSelectedNodeId is still present in the (now rebuilt) list, restore
+                    // the selection immediately so the detail panel never flashes to "empty".
+                    if (!string.IsNullOrEmpty(_lastSelectedNodeId))
+                    {
+                        var restore = ViewModel.FilteredServers.FirstOrDefault(s => s.Id == _lastSelectedNodeId);
+                        if (restore != null)
+                        {
+                            // Re-select without recursing: the next SelectionChanged will be the
+                            // real one with a non-null SelectedItem, which fills the detail panel.
+                            ServersListView.SelectedItem = restore;
+                            return;
+                        }
+                    }
                     ShowPanel("empty");
                 }
             }
