@@ -477,6 +477,7 @@ namespace AnywhereWinUI.Views
                     if (node != null)
                     {
                         string realConfig = await ConfigBuilder.BuildAsync(node);
+                        await CoreManager.Instance.StopAsync();
                         await CoreManager.Instance.StartAsync(realConfig);
                     }
                 }
@@ -1377,6 +1378,7 @@ namespace AnywhereWinUI.Views
                     if (node != null)
                     {
                         string realConfig = await ConfigBuilder.BuildAsync(node);
+                        await CoreManager.Instance.StopAsync();
                         await CoreManager.Instance.StartAsync(realConfig);
                     }
                 }
